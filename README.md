@@ -1,55 +1,57 @@
-# CT Image Segmentation Using Manual Thresholding
+# CT Tumor Segmentation Using Otsu's Thresholding
 
 ## 1. Objective
 
-The objective of this experiment is to investigate manual threshold-based segmentation of a suspected tumor in a brain CT image. The process involves loading the image, identifying a Region of Interest (ROI), analyzing its intensity histogram, and evaluating the limitations of manual threshold selection.
+This experiment investigates Otsu's automatic thresholding method for segmenting a suspected lesion in a brain CT JPG image. Unlike manual global thresholding, Otsu's method automatically selects an intensity threshold from the image data.
 
 ## 2. Methodology
 
-### Step 1: Loading and displaying the CT image
+### Step 1: Load and display the image
 
-The CT image (`Tumor1.jpg`) was loaded using the OpenCV library (`cv2`) in grayscale format.
+The image (`Tumor1.jpg`) was loaded using OpenCV (`cv2`) in grayscale format and displayed using Matplotlib. Because the input is an 8-bit JPG, pixel brightness values range from 0 to 255; these values are **not calibrated CT Hounsfield Units**.
 
-The grayscale JPG image contains pixel intensity values ranging from 0 (black) to 255 (white).
+### Step 2: Select a region of interest (ROI)
 
-The image was then displayed using Matplotlib to visually inspect the brain structures and identify the approximate location of the suspected tumor.
+The image was visually inspected and a square ROI was positioned around the suspected lesion using an approximate center at **(x = 125, y = 90)**. The latest code screenshot specifies **35 × 35 pixels** for the square. The selected region was cropped from the grayscale image for analysis.
 
-### Step 2: Selecting the Region of Interest (ROI)
+**Verification:** Confirm the ROI actually used for the reported result by running `print(roi.shape)`. If the notebook cell defining `roi` was not rerun after changing `size`, the threshold may have been computed on an earlier ROI.
 
-After visually inspecting the CT image, the approximate center coordinates of the suspected tumor were selected manually.
+### Step 3: Examine the ROI histogram
 
-- Center coordinates: **(x = 125, y = 90)**
-- Square size: **55 × 55 pixels**
+A histogram of the ROI pixel intensities was displayed using 256 bins spanning 0–255. Several intensity ranges overlap rather than forming two clearly separated peaks.
 
-A square ROI was defined around the selected center point, and a red rectangle was drawn on the original image to visualize the selected region.
+### Step 4: Apply Otsu's method
 
-The ROI was then cropped from the grayscale image for further analysis.
+Otsu thresholding was applied to the ROI with OpenCV:
 
-### Step 3: Calculating the ROI intensity histogram
+```python
+otsu_T, otsu_mask = cv2.threshold(
+    roi, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+)
+```
+![alt text](image.png)
 
-An intensity histogram was calculated using the pixel values within the selected ROI.
+Otsu's method selects a threshold that maximizes the between-class variance of pixel intensities. The reported result was **T = 124**. In the resulting binary mask, pixels above 124 are white (255), and pixels at or below 124 are black (0).
 
-The histogram was generated using Matplotlib with 256 bins, corresponding to the possible grayscale intensity values from 0 to 255.
+### Step 5: Visualize results
 
-The horizontal axis represents pixel intensity, while the vertical axis represents the number of pixels at each intensity.
+The original grayscale ROI, its intensity histogram with a vertical line at the Otsu threshold, and the resulting binary mask were displayed side by side.
 
-### Step 4: Histogram analysis and limitations of manual threshold selection
+## 3. Results and Discussion
 
-The ROI histogram shows that most pixel intensities are concentrated approximately between **90 and 180**, with a prominent peak around **125–130**.
+Otsu automatically selected a threshold of **124**, avoiding the need to choose a value manually. The resulting mask classified much of the brighter central region as white and darker regions as black. However, it also showed irregular boundaries, small black holes within the bright region, and isolated white pixels outside it.
 
-Several overlapping local peaks are visible, and there is no clearly defined valley separating the intensity distributions.
+The ROI contains overlapping grayscale intensities. Consequently, a single intensity threshold may include surrounding tissue or exclude portions of the suspected lesion. Otsu distinguishes intensity classes; it does **not** identify tumor tissue or anatomical boundaries.
 
-Furthermore, the suspected tumor and surrounding brain tissue appear to have similar grayscale intensity values. This makes it difficult to distinguish the two regions using pixel intensity alone. The histogram by itself cannot confirm which intensities correspond to tumor or surrounding tissue.
+## 4. Limitations
 
-As a result, selecting a single threshold manually is challenging because the intensity ranges of different tissues may overlap. A low threshold may include surrounding healthy tissue, while a high threshold may exclude parts of the suspected tumor.
+- **Overlapping intensities:** The suspected lesion and neighboring tissue may have similar brightness values.
+- **Irregular mask:** Small holes, isolated pixels, and uneven edges are visible.
+- **ROI dependence:** Changing the ROI position or dimensions can change the histogram and selected threshold.
+- **No spatial understanding:** Otsu uses pixel intensity, not anatomy or connectivity.
+- **JPG input:** Display intensities are not calibrated CT Hounsfield Units, and JPEG compression can affect pixel values.
+- **No reference annotation:** Segmentation accuracy cannot be established without an appropriate ground-truth or expert annotation.
 
-This highlights a limitation of manual global thresholding: it relies only on pixel intensity and does not consider anatomical structure or spatial relationships.
+## 5. Conclusion
 
-## 3. Conclusion
-
-The experiment illustrates an important limitation of manual global thresholding in CT image segmentation.
-
-When the suspected tumor and surrounding brain tissue have similar pixel intensities, selecting an appropriate threshold becomes challenging and subjective.
-
-Additional methods, such as Otsu's automatic thresholding and adaptive thresholding, can be investigated and compared to determine whether they provide better segmentation results. Segmentation quality would need to be assessed against a suitable reference rather than inferred from the histogram alone. 
-
+Otsu's thresholding successfully selected an automatic threshold of **124** for the tested ROI, but the resulting mask was not a clean anatomical segmentation. This illustrates that automatic threshold selection does not necessarily solve the problem of overlapping tissue intensities. Future experiments could compare filtering, adaptive thresholding, or morphological post-processing, ideally with evaluation against a reference annotation.
